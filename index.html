@@ -233,7 +233,7 @@ select:focus{border-color:#444}
         <div class="plat-status" id="ps-openrouter">未設定</div>
         <div class="key-hint"><a href="https://openrouter.ai/keys" target="_blank">openrouter.ai</a></div>
       </div>
-      <div class="platform-card" id="pc-ollama">
+      <div class="platform-card" id="pc-ollama" style="display:none">
         <div class="plat-name">Ollama <span class="plat-tag tag-free">本地</span></div>
         <div class="plat-desc">完全免費不需 Key</div>
         <div class="key-row"><input type="text" id="key-ollama" value="http://localhost:11434"><button onclick="saveKey('ollama')">連</button></div>
@@ -283,7 +283,7 @@ const PLATFORMS={
   groq:{name:"Groq",models:["llama-3.3-70b-versatile","llama-3.3-70b-versatile","llama-3.1-8b-instant","gemma2-9b-it"]},
   deepseek:{name:"DeepSeek",models:["deepseek-chat","deepseek-reasoner"]},
   openrouter:{name:"OpenRouter",models:["meta-llama/llama-3.2-3b-instruct:free","meta-llama/llama-3.1-8b-instruct:free","google/gemma-2-9b-it:free","mistralai/mistral-7b-instruct:free","qwen/qwen-2-7b-instruct:free"]},
-  ollama:{name:"Ollama",models:["llama3","mistral","phi3","gemma2","qwen2"]}
+  
 };
 const ROLES=[
   {name:"深度分析師",prompt:"你是深度分析專家。分析以下內容，找出關鍵重點和洞察：\n\n{input}"},
