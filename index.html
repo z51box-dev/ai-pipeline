@@ -280,7 +280,7 @@ select:focus{border-color:#444}
 <script>
 // ── PLATFORMS & ROLES ──
 const PLATFORMS={
-  groq:{name:"Groq",models:["llama-3.3-70b-versatile","llama3-70b-8192","llama3-8b-8192","gemma2-9b-it"]},
+  groq:{name:"Groq",models:["llama-3.3-70b-versatile","llama-3.1-70b-versatile","gemma2-9b-it","mixtral-8x7b-32768"]},
   deepseek:{name:"DeepSeek",models:["deepseek-chat","deepseek-reasoner"]},
   openrouter:{name:"OpenRouter",models:["meta-llama/llama-3.2-3b-instruct:free","meta-llama/llama-3.1-8b-instruct:free","google/gemma-2-9b-it:free","mistralai/mistral-7b-instruct:free","qwen/qwen-2-7b-instruct:free"]},
   ollama:{name:"Ollama",models:["llama3","mistral","phi3","gemma2","qwen2"]}
@@ -408,7 +408,7 @@ async function testKey(p,v){
   if(p==='groq'){
     const r=await fetch('https://api.groq.com/openai/v1/chat/completions',{method:'POST',
       headers:{'Content-Type':'application/json','Authorization':`Bearer ${v}`},
-      body:JSON.stringify({model:'llama3-8b-8192',messages:[{role:'user',content:'hi'}],max_tokens:5})});
+      body:JSON.stringify({model:'llama-3.3-70b-versatile',messages:[{role:'user',content:'hi'}],max_tokens:5})});
     if(!r.ok){const e=await r.json();throw new Error(e.error?.message||'Key 無效');}
   }
   if(p==='deepseek'){
