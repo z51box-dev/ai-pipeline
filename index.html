@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Pipeline v4</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,sans-serif;background:#0d0d0d;color:#d0ccc4;min-height:100vh;font-size:16px}
+
+.topbar{background:#141414;border-bottom:1px solid #222;padding:10px 20px;display:flex;align-items:center;justify-content:space-between}
+.topbar h1{font-size:18px;font-weight:600;color:#e8e4dc}
+.dot{width:8px;height:8px;border-radius:50%;background:#f44336;display:inline-block;margin-right:5px;vertical-align:middle}
+.dot.ok{background:#4caf50}
+#statusText{font-size:14px;color:#555}
+
+/* ── TABS ── */
+.tabs{display:flex;background:#141414;border-bottom:1px solid #222;padding:0 20px}
+.tab{padding:10px 18px;font-size:15px;font-weight:500;color:#555;cursor:pointer;border-bottom:2px solid transparent;transition:all .15s}
+.tab:hover{color:#888}
+.tab.active{color:#c8c4bc;border-bottom-color:#4caf50}
+
+.tab-content{display:none;padding:16px 20px;max-width:1200px;margin:0 auto}
+.tab-content.active{display:block}
+
+/* ── QUICK MODE (Tab 1) ── */
+.quick-wrap{max-width:700px;margin:0 auto}
+.quick-title{font-size:26px;font-weight:700;color:#e8e4dc;margin-bottom:6px;text-align:center}
+.quick-sub{font-size:16px;color:#555;text-align:center;margin-bottom:24px}
+
+.scenario-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:20px}
+.scenario-btn{background:#141414;border:1px solid #222;border-radius:12px;padding:22px 16px;cursor:pointer;text-align:center;transition:all .2s;position:relative}
+.scenario-btn:hover{border-color:#444;background:#1a1a1a}
+.scenario-btn.selected{border-color:#4caf50;background:#0d1f0d}
+.scenario-icon{font-size:32px;margin-bottom:8px}
+.scenario-name{font-size:16px;font-weight:600;color:#c8c4bc;margin-bottom:4px}
+.scenario-desc{font-size:14px;color:#555;line-height:1.5}
+.scenario-steps{font-size:13px;color:#2d4a2d;margin-top:6px}
+.scenario-btn.selected .scenario-steps{color:#4caf50}
+
+.input-area{margin-bottom:14px}
+.input-lbl{font-size:14px;color:#555;margin-bottom:6px;text-transform:uppercase;letter-spacing:.6px}
+textarea{width:100%;border:1px solid #222;border-radius:9px;padding:12px 14px;font-size:16px;font-family:inherit;color:#c8c4bc;background:#141414;outline:none;resize:vertical;transition:border-color .15s;line-height:1.6}
+textarea:focus{border-color:#444;background:#1a1a1a}
+textarea::placeholder{color:#333}
+
+.btn-go{width:100%;padding:13px;background:#1a3a1a;color:#4caf50;border:1px solid #2d4a2d;border-radius:10px;font-size:18px;font-weight:600;cursor:pointer;transition:all .15s;letter-spacing:.3px}
+.btn-go:hover{background:#2d4a2d;color:#66bb6a}
+.btn-go:disabled{background:#1a1a1a;color:#333;border-color:#222;cursor:not-allowed}
+
+/* ── PROGRESS ── */
+.prog-section{margin-top:16px;display:none}
+.prog-steps{display:flex;align-items:center;gap:0;margin-bottom:14px;overflow-x:auto;padding-bottom:4px}
+.prog-step{display:flex;align-items:center;flex-shrink:0}
+.prog-bubble{width:32px;height:32px;border-radius:50%;border:2px solid #222;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;color:#444;background:#141414;transition:all .3s;flex-shrink:0}
+.prog-bubble.active{border-color:#ff9800;color:#ff9800;background:#1f1400}
+.prog-bubble.done{border-color:#4caf50;color:#4caf50;background:#0d1f0d}
+.prog-bubble.error{border-color:#ef5350;color:#ef5350;background:#1f0d0d}
+.prog-line{width:30px;height:2px;background:#222;transition:background .3s;flex-shrink:0}
+.prog-line.done{background:#4caf50}
+.prog-label{font-size:13px;color:#444;text-align:center;margin-top:4px;white-space:nowrap}
+.prog-item{display:flex;flex-direction:column;align-items:center;flex-shrink:0}
+
+.out-section{margin-top:4px}
+.out-step{margin-bottom:12px}
+.out-head{display:flex;align-items:center;gap:7px;margin-bottom:5px;flex-wrap:wrap}
+.out-num{background:#1e1e1e;color:#666;border-radius:4px;padding:1px 8px;font-size:14px;font-weight:600;border:1px solid #2a2a2a}
+.out-role{font-size:15px;font-weight:500;color:#aaa}
+.out-plat{font-size:13px;background:#1a1a1a;color:#555;padding:1px 7px;border-radius:4px;border:1px solid #222}
+.badge{margin-left:auto;font-size:13px;padding:2px 8px;border-radius:10px;font-weight:500}
+.badge.running{background:#2a2000;color:#ffc107;animation:pulse 1.2s infinite}
+.badge.done{background:#0d1f0d;color:#4caf50}
+.badge.error{background:#1f0d0d;color:#ef5350}
+.badge.skip{background:#1a1a1a;color:#555}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+.out-box{background:#0a0a0a;border:1px solid #1e1e1e;border-radius:8px;padding:11px;font-size:15px;line-height:1.8;white-space:pre-wrap;color:#c8c4bc;min-height:50px;max-height:260px;overflow-y:auto}
+.copy-btn{font-size:13px;color:#333;background:none;border:1px solid #222;border-radius:4px;padding:2px 7px;cursor:pointer;margin-left:4px}
+.copy-btn:hover{background:#1e1e1e;color:#888}
+
+/* ── ADVANCED (Tab 2) ── */
+.adv-wrap{display:flex;gap:14px}
+.adv-left{flex:0 0 420px;display:flex;flex-direction:column;gap:10px}
+.adv-right{flex:1;min-width:0}
+.card{background:#141414;border:1px solid #222;border-radius:10px;padding:15px 18px}
+.card-title{font-size:14px;font-weight:600;color:#555;margin-bottom:10px;text-transform:uppercase;letter-spacing:.8px}
+.platforms-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:8px}
+.platform-card{border:1px solid #222;border-radius:8px;padding:9px 11px;background:#0f0f0f}
+.platform-card.configured{border-color:#2d4a2d}
+.plat-name{font-size:15px;font-weight:600;color:#aaa;margin-bottom:2px;display:flex;align-items:center;justify-content:space-between}
+.plat-tag{font-size:11px;font-weight:700;padding:1px 5px;border-radius:3px}
+.tag-free{background:#0d1f0d;color:#4caf50}
+.tag-key{background:#1f0d00;color:#ff7043}
+.plat-desc{font-size:13px;color:#444;margin-bottom:7px;line-height:1.4}
+.key-row{display:flex;gap:5px}
+.key-row input{flex:1;border:1px solid #222;border-radius:6px;padding:5px 8px;font-size:14px;font-family:inherit;color:#c8c4bc;background:#0a0a0a;outline:none}
+.key-row input:focus{border-color:#444}
+.key-row button{padding:5px 10px;background:#1e1e1e;color:#aaa;border:none;border-radius:6px;font-size:14px;cursor:pointer}
+.key-row button:hover{background:#2a2a2a}
+.plat-status{font-size:13px;color:#333;margin-top:4px}
+.plat-status.ok{color:#4caf50}
+.plat-status.err{color:#ef5350;font-size:13px}
+.key-hint{font-size:13px;color:#333;margin-top:3px}
+.key-hint a{color:#444}
+.manual-note{background:#0f0f0f;border:1px solid #1e1e1e;border-radius:7px;padding:9px 11px;font-size:14px;color:#444;line-height:1.7}
+.manual-note a{color:#555}
+select{width:100%;border:1px solid #222;border-radius:7px;padding:6px 8px;font-size:15px;font-family:inherit;color:#c8c4bc;background:#0a0a0a;outline:none;cursor:pointer}
+select:focus{border-color:#444}
+.step-card{background:#0f0f0f;border:1px solid #1e1e1e;border-radius:9px;padding:11px 13px;margin-bottom:7px}
+.step-head{display:flex;align-items:center;gap:7px;margin-bottom:8px}
+.step-num{background:#1e1e1e;color:#666;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;flex-shrink:0}
+.step-lbl{font-size:15px;font-weight:500;color:#888}
+.del-btn{margin-left:auto;background:none;border:none;color:#333;cursor:pointer;font-size:21px;line-height:1;padding:0 3px;border-radius:4px}
+.del-btn:hover{color:#e53935;background:#1f0d0d}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:7px}
+.field-lbl{font-size:13px;color:#444;margin-bottom:3px;text-transform:uppercase;letter-spacing:.5px}
+.btn-add{width:100%;padding:8px;border:1px dashed #222;border-radius:7px;background:none;color:#444;font-size:15px;cursor:pointer;margin-top:3px}
+.btn-add:hover{border-color:#444;color:#888;background:#141414}
+.btn-run{width:100%;padding:11px;background:#1a3a1a;color:#4caf50;border:1px solid #2d4a2d;border-radius:9px;font-size:17px;font-weight:600;cursor:pointer;margin-top:6px}
+.btn-run:hover{background:#2d4a2d}
+.btn-run:disabled{background:#141414;color:#333;border-color:#1e1e1e;cursor:not-allowed}
+.prog-wrap{height:3px;background:#1a1a1a;border-radius:2px;margin-top:8px;overflow:hidden;display:none}
+.prog-bar{height:100%;background:#4caf50;border-radius:2px;transition:width .3s;width:0%}
+.adv-out-box{background:#0a0a0a;border:1px solid #1e1e1e;border-radius:8px;padding:11px;font-size:15px;line-height:1.8;white-space:pre-wrap;color:#c8c4bc;min-height:50px;max-height:300px;overflow-y:auto}
+.empty-hint{text-align:center;color:#2a2a2a;padding:30px 0;line-height:2}
+
+@media(max-width:700px){
+  .scenario-grid{grid-template-columns:1fr}
+  .adv-wrap{flex-direction:column}
+  .adv-left{flex:none}
+  .field-row{grid-template-columns:1fr}
+  .platforms-grid{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <h1>⛓ AI Pipeline — 多平台串聯</h1>
+  <div><span class="dot ok" id="statusDot"></span><span id="statusText">就緒</span></div>
+</div>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('quick')">🚀 快速模式</div>
+  <div class="tab" onclick="switchTab('advanced')">⚙️ 進階設定</div>
+</div>
+
+<!-- ══════════════ TAB 1: QUICK ══════════════ -->
+<div class="tab-content active" id="tab-quick">
+<div class="quick-wrap">
+  <div style="height:10px"></div>
+  <div class="quick-title">你想做什麼？</div>
+  <div class="quick-sub">選一個情境，輸入內容，一鍵執行</div>
+
+  <div class="scenario-grid">
+    <div class="scenario-btn selected" onclick="selectScenario('post')" id="sc-post">
+      <div class="scenario-icon">📢</div>
+      <div class="scenario-name">社群爆款貼文</div>
+      <div class="scenario-desc">輸入主題，自動生成吸睛的社群文案加 Emoji</div>
+      <div class="scenario-steps">分析 → 撰寫 → 潤色</div>
+    </div>
+    <div class="scenario-btn" onclick="selectScenario('analyze')" id="sc-analyze">
+      <div class="scenario-icon">🔍</div>
+      <div class="scenario-name">深度分析</div>
+      <div class="scenario-desc">輸入議題，深度邏輯分析 + 整理成報告</div>
+      <div class="scenario-steps">輿情分析 → 邏輯整理 → 摘要</div>
+    </div>
+    <div class="scenario-btn" onclick="selectScenario('plan')" id="sc-plan">
+      <div class="scenario-icon">📋</div>
+      <div class="scenario-name">行動計劃</div>
+      <div class="scenario-desc">輸入目標，自動規劃步驟與時程</div>
+      <div class="scenario-steps">研究 → 規劃 → 精簡</div>
+    </div>
+    <div class="scenario-btn" onclick="selectScenario('translate')" id="sc-translate">
+      <div class="scenario-icon">🌐</div>
+      <div class="scenario-name">翻譯 + 潤色</div>
+      <div class="scenario-desc">中文翻英文，再自動潤色到母語級別</div>
+      <div class="scenario-steps">翻譯 → 潤色 → 校對</div>
+    </div>
+    <div class="scenario-btn" onclick="selectScenario('critique')" id="sc-critique">
+      <div class="scenario-icon">✏️</div>
+      <div class="scenario-name">文章優化</div>
+      <div class="scenario-desc">貼上你的文章，自動批評 + 改寫優化</div>
+      <div class="scenario-steps">批評 → 改寫 → 最終版</div>
+    </div>
+    <div class="scenario-btn" onclick="selectScenario('research')" id="sc-research">
+      <div class="scenario-icon">📚</div>
+      <div class="scenario-name">主題研究</div>
+      <div class="scenario-desc">輸入主題，生成完整的研究整理報告</div>
+      <div class="scenario-steps">展開 → 分析 → 整理</div>
+    </div>
+  </div>
+
+  <div class="input-area">
+    <div class="input-lbl">輸入你的內容</div>
+    <textarea id="quickInput" rows="4" placeholder="在這裡輸入..."></textarea>
+  </div>
+
+  <button class="btn-go" id="btnGo" onclick="runQuick()">▶ 一鍵執行</button>
+
+  <div class="prog-section" id="progSection">
+    <div style="display:flex;justify-content:center;margin-bottom:10px" id="progStepsRow"></div>
+    <div class="out-section" id="quickOutput"></div>
+  </div>
+</div>
+</div>
+
+<!-- ══════════════ TAB 2: ADVANCED ══════════════ -->
+<div class="tab-content" id="tab-advanced">
+<div class="adv-wrap">
+<div class="adv-left">
+
+  <div class="card">
+    <div class="card-title">平台 API 設定</div>
+    <div class="platforms-grid">
+      <div class="platform-card" id="pc-groq">
+        <div class="plat-name">Groq <span class="plat-tag tag-free">FREE</span></div>
+        <div class="plat-desc">極速 Llama 3 70B</div>
+        <div class="key-row"><input type="password" id="key-groq" placeholder="gsk_..."><button onclick="saveKey('groq')">存</button></div>
+        <div class="plat-status" id="ps-groq">未設定</div>
+        <div class="key-hint"><a href="https://console.groq.com" target="_blank">console.groq.com</a></div>
+      </div>
+      <div class="platform-card" id="pc-deepseek">
+        <div class="plat-name">DeepSeek <span class="plat-tag tag-key">KEY</span></div>
+        <div class="plat-desc">深度推理 V3/R1</div>
+        <div class="key-row"><input type="password" id="key-deepseek" placeholder="sk-..."><button onclick="saveKey('deepseek')">存</button></div>
+        <div class="plat-status" id="ps-deepseek">未設定</div>
+        <div class="key-hint"><a href="https://platform.deepseek.com" target="_blank">platform.deepseek.com</a></div>
+      </div>
+      <div class="platform-card" id="pc-openrouter">
+        <div class="plat-name">OpenRouter <span class="plat-tag tag-free">FREE</span></div>
+        <div class="plat-desc">備援 :free 免費模型</div>
+        <div class="key-row"><input type="password" id="key-openrouter" placeholder="sk-or-..."><button onclick="saveKey('openrouter')">存</button></div>
+        <div class="plat-status" id="ps-openrouter">未設定</div>
+        <div class="key-hint"><a href="https://openrouter.ai/keys" target="_blank">openrouter.ai</a></div>
+      </div>
+      <div class="platform-card" id="pc-ollama">
+        <div class="plat-name">Ollama <span class="plat-tag tag-free">本地</span></div>
+        <div class="plat-desc">完全免費不需 Key</div>
+        <div class="key-row"><input type="text" id="key-ollama" value="http://localhost:11434"><button onclick="saveKey('ollama')">連</button></div>
+        <div class="plat-status" id="ps-ollama">未連接</div>
+        <div class="key-hint"><a href="https://ollama.ai" target="_blank">ollama.ai</a></div>
+      </div>
+    </div>
+    <div class="manual-note">
+      手動配合：
+      <a href="https://notebooklm.google.com" target="_blank">NotebookLM</a> ·
+      <a href="https://doubao.com" target="_blank">豆包</a> ·
+      <a href="https://kuse.ai" target="_blank">Kuse.ai</a> ·
+      <a href="https://drive.google.com" target="_blank">雲端硬碟</a>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">需求輸入</div>
+    <textarea id="advInput" rows="4" placeholder="輸入你的需求..."></textarea>
+  </div>
+
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <div class="card-title" style="margin:0">自訂步驟</div>
+      <span style="font-size:13px;color:#333">每步可選不同平台</span>
+    </div>
+    <div id="advStepsContainer"><div class="empty-hint">點下方加入步驟</div></div>
+    <button class="btn-add" onclick="addAdvStep()">＋ 加入步驟</button>
+  </div>
+
+  <button class="btn-run" id="advRunBtn" onclick="runAdvanced()">▶ 執行串聯</button>
+  <div class="prog-wrap" id="advProgressWrap"><div class="prog-bar" id="advProgressBar"></div></div>
+</div>
+
+<div class="adv-right">
+  <div class="card" style="min-height:500px">
+    <div class="card-title">執行結果</div>
+    <div id="advOutputContainer"><div class="empty-hint">執行後結果顯示在這裡</div></div>
+  </div>
+</div>
+</div>
+</div>
+
+<script>
+// ── PLATFORMS & ROLES ──
+const PLATFORMS={
+  groq:{name:"Groq",models:["llama-3.3-70b-versatile","llama3-70b-8192","llama3-8b-8192","gemma2-9b-it"]},
+  deepseek:{name:"DeepSeek",models:["deepseek-chat","deepseek-reasoner"]},
+  openrouter:{name:"OpenRouter",models:["meta-llama/llama-3.2-3b-instruct:free","meta-llama/llama-3.1-8b-instruct:free","google/gemma-2-9b-it:free","mistralai/mistral-7b-instruct:free","qwen/qwen-2-7b-instruct:free"]},
+  ollama:{name:"Ollama",models:["llama3","mistral","phi3","gemma2","qwen2"]}
+};
+const ROLES=[
+  {name:"深度分析師",prompt:"你是深度分析專家。分析以下內容，找出關鍵重點和洞察：\n\n{input}"},
+  {name:"社群文案撰寫",prompt:"你是社群爆款文案專家，擅長中文 Emoji 排版。根據以下內容撰寫吸引人的社群貼文：\n\n{input}"},
+  {name:"輿情邏輯分析",prompt:"你是輿情分析專家。針對以下內容進行深度邏輯分析，找出潛在風險和機會：\n\n{input}"},
+  {name:"摘要整理",prompt:"你是摘要專家。用條列式整理以下內容的核心重點（5點以內）：\n\n{input}"},
+  {name:"翻譯（英文）",prompt:"請將以下內容翻譯成流暢的英文：\n\n{input}"},
+  {name:"行動計劃",prompt:"你是策略規劃師。根據以下內容制定具體可執行的行動計劃：\n\n{input}"},
+  {name:"批評與優化",prompt:"你是建設性批評家。針對以下內容指出缺點並提出優化建議：\n\n{input}"},
+  {name:"文章改寫",prompt:"你是專業編輯。根據以下批評建議，改寫並優化文章，輸出最終版本：\n\n{input}"},
+  {name:"自訂指令",prompt:"{input}"},
+];
+
+// ── SCENARIO DEFINITIONS ──
+const SCENARIOS={
+  post:[
+    {role:"深度分析師",platform:"deepseek",prompt:"你是內容策略師。分析以下主題的受眾、痛點和吸引力，為社群貼文做準備：\n\n{input}"},
+    {role:"社群文案撰寫",platform:"groq",prompt:"你是社群爆款文案專家，擅長中文 Emoji 排版。根據以下分析，撰寫一篇吸睛的社群貼文，包含標題、內文和 3-5 個相關 Hashtag：\n\n{input}"},
+    {role:"潤色優化",platform:"openrouter",prompt:"你是文字編輯。審核並潤色以下社群貼文，讓它更自然流暢、更有感染力，輸出最終版本：\n\n{input}"},
+  ],
+  analyze:[
+    {role:"輿情邏輯分析",platform:"deepseek",prompt:"你是輿情分析專家。針對以下議題進行深度邏輯分析，包含正反面觀點、潛在風險和機會：\n\n{input}"},
+    {role:"結構整理",platform:"groq",prompt:"你是報告撰寫專家。將以下分析整理成清楚的結構化報告，包含摘要、重點發現、建議：\n\n{input}"},
+    {role:"執行摘要",platform:"openrouter",prompt:"你是摘要專家。將以下報告濃縮成一段100字以內的執行摘要：\n\n{input}"},
+  ],
+  plan:[
+    {role:"需求研究",platform:"groq",prompt:"你是研究員。針對以下目標，展開背景研究，找出關鍵成功因素和可能障礙：\n\n{input}"},
+    {role:"行動計劃",platform:"deepseek",prompt:"你是策略規劃師。根據以下研究結果，制定具體可執行的行動計劃，包含步驟、時程和負責人：\n\n{input}"},
+    {role:"精簡版本",platform:"openrouter",prompt:"你是簡報專家。將以下行動計劃精簡成一頁重點清單，讓人一眼就能理解：\n\n{input}"},
+  ],
+  translate:[
+    {role:"翻譯（英文）",platform:"groq",prompt:"請將以下中文內容翻譯成英文，保持原意、語氣和風格：\n\n{input}"},
+    {role:"語言潤色",platform:"deepseek",prompt:"你是英文母語編輯。潤色以下英文翻譯，讓它更自然流暢、符合母語表達習慣：\n\n{input}"},
+    {role:"最終校對",platform:"openrouter",prompt:"你是英文校對專家。對以下英文進行最終校對，檢查語法、用詞和標點，輸出最終版本：\n\n{input}"},
+  ],
+  critique:[
+    {role:"批評與優化",platform:"deepseek",prompt:"你是嚴格的建設性批評家。針對以下文章，指出所有可以改善的地方，包含邏輯、表達、結構：\n\n{input}"},
+    {role:"文章改寫",platform:"groq",prompt:"你是專業編輯。根據以下批評建議，完全改寫並優化文章：\n\n{input}"},
+    {role:"最終定稿",platform:"openrouter",prompt:"你是主編。對以下改寫版本做最後潤飾，輸出最終定稿版本：\n\n{input}"},
+  ],
+  research:[
+    {role:"主題展開",platform:"groq",prompt:"你是知識型 AI。針對以下主題，從多個角度展開，涵蓋歷史背景、現況、趨勢、重要觀點：\n\n{input}"},
+    {role:"深度分析師",platform:"deepseek",prompt:"你是分析師。根據以下研究內容，進行深度分析，找出最重要的洞察和結論：\n\n{input}"},
+    {role:"整理報告",platform:"openrouter",prompt:"你是報告撰寫專家。將以下分析整理成條理清楚的研究報告，方便閱讀和使用：\n\n{input}"},
+  ],
+};
+
+// ── STATE ──
+let currentScenario='post';
+let keys={};// load saved keys
+try{const saved=localStorage.getItem("ai_pipeline_keys");if(saved){keys=JSON.parse(saved);}}catch(e){}
+let advSteps=[];
+let advStepId=0;
+
+// ── PRE-FILL KEYS ON LOAD ──
+function prefillKeys(){
+  Object.keys(keys).forEach(p=>{
+    const el=document.getElementById("key-"+p);
+    if(el)el.value="••••••••••••";
+    const ps=document.getElementById("ps-"+p);
+    if(ps){ps.textContent="✓ 已儲存";ps.className="plat-status ok";}
+    const pc=document.getElementById("pc-"+p);
+    if(pc)pc.classList.add("configured");
+  });
+  updateStatusBar();
+}
+function updateStatusBar(){
+  const n=Object.keys(keys).length;
+  document.getElementById("statusDot").className=n?"dot ok":"dot";
+  document.getElementById("statusText").textContent=n?n+" 個平台已設定（自動儲存）":"請設定 API Key";
+}
+// ── TABS ──
+function switchTab(t){
+  document.querySelectorAll('.tab').forEach((el,i)=>{el.classList.toggle('active',['quick','advanced'][i]===t)});
+  document.querySelectorAll('.tab-content').forEach(el=>el.classList.remove('active'));
+  document.getElementById(`tab-${t}`).classList.add('active');
+}
+
+// ── SCENARIO ──
+function selectScenario(s){
+  currentScenario=s;
+  document.querySelectorAll('.scenario-btn').forEach(el=>el.classList.remove('selected'));
+  document.getElementById(`sc-${s}`).classList.add('selected');
+  const placeholders={
+    post:'例如：台灣夜市文化、咖啡廳新品上市、健身減脂心得...',
+    analyze:'例如：AI 取代工作的趨勢、台灣房價問題、電動車市場...',
+    plan:'例如：學英文 3 個月計劃、開一家小店、每天運動的習慣...',
+    translate:'把你想翻譯的中文貼在這裡...',
+    critique:'把你寫的文章、貼文或任何文字貼在這裡...',
+    research:'例如：量子電腦、ChatGPT 的影響、台灣半導體產業...',
+  };
+  document.getElementById('quickInput').placeholder=placeholders[s]||'輸入你的內容...';
+}
+
+// ── KEYS ──
+async function saveKey(p){
+  const el=document.getElementById(`key-${p}`);
+  const v=el.value.trim();
+  if(!v)return;
+  if(v==='••••••••••••'){alert('Key 已儲存，直接使用即可！');return;}
+  const btn=event.target;
+  btn.textContent='驗證中...';btn.disabled=true;
+  const ps=document.getElementById(`ps-${p}`);
+  ps.textContent='連線測試中...';ps.className='plat-status';
+  try{
+    await testKey(p,v);
+    keys[p]=v;
+    try{localStorage.setItem("ai_pipeline_keys",JSON.stringify(keys));}catch(e){}
+    ps.textContent='✓ 驗證成功，已儲存！';ps.className='plat-status ok';
+    document.getElementById(`pc-${p}`).classList.add('configured');
+    el.value='••••••••••••';
+    updateStatusBar();
+  }catch(e){
+    ps.textContent='✗ Key 無效：'+e.message;ps.className='plat-status err';
+    el.style.border='1.5px solid #ef5350';
+    setTimeout(()=>{el.style.border='';},4000);
+  }
+  btn.textContent='存';btn.disabled=false;
+}
+
+async function testKey(p,v){
+  if(p==='groq'){
+    const r=await fetch('https://api.groq.com/openai/v1/chat/completions',{method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':`Bearer ${v}`},
+      body:JSON.stringify({model:'llama3-8b-8192',messages:[{role:'user',content:'hi'}],max_tokens:5})});
+    if(!r.ok){const e=await r.json();throw new Error(e.error?.message||'Key 無效');}
+  }
+  if(p==='deepseek'){
+    const r=await fetch('https://api.deepseek.com/chat/completions',{method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':`Bearer ${v}`},
+      body:JSON.stringify({model:'deepseek-chat',messages:[{role:'user',content:'hi'}],max_tokens:5})});
+    if(!r.ok){const e=await r.json();throw new Error(e.error?.message||'Key 無效');}
+  }
+  if(p==='openrouter'){
+    const r=await fetch('https://openrouter.ai/api/v1/chat/completions',{method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':`Bearer ${v}`,'HTTP-Referer':'https://ai-pipeline.local','X-Title':'AI Pipeline'},
+      body:JSON.stringify({model:'meta-llama/llama-3.2-3b-instruct:free',messages:[{role:'user',content:'hi'}],max_tokens:5})});
+    if(!r.ok){const e=await r.json();throw new Error(e.error?.message||'Key 無效');}
+  }
+  if(p==='ollama'){
+    const r=await fetch(`${v}/api/tags`).catch(()=>{throw new Error('無法連接 Ollama');});
+    if(!r.ok)throw new Error('無法連接');
+  }
+}
+
+// ── API CALL ──
+async function callAPI(platform,model,prompt){
+  // Auto-pick available platform if not configured
+  if(platform!=='ollama'&&!keys[platform]){
+    const fallbacks=['groq','openrouter','deepseek','ollama'];
+    for(const f of fallbacks){
+      if(f==='ollama'||keys[f]){platform=f;model=PLATFORMS[f].models[0];break;}
+    }
+  }
+  if(platform==='groq'){
+    const r=await fetch('https://api.groq.com/openai/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${keys.groq}`},body:JSON.stringify({model,messages:[{role:'user',content:prompt}],max_tokens:1500})});
+    if(!r.ok){const e=await r.json();throw new Error(e.error?.message||'Groq 錯誤');}
+    return (await r.json()).choices?.[0]?.message?.content||'';
+  }
+  if(platform==='deepseek'){
+    const r=await fetch('https://api.deepseek.com/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${keys.deepseek}`},body:JSON.stringify({model,messages:[{role:'user',content:prompt}],max_tokens:1500})});
+    if(!r.ok){const e=await r.json();throw new Error(e.error?.message||'DeepSeek 錯誤');}
+    return (await r.json()).choices?.[0]?.message?.content||'';
+  }
+  if(platform==='openrouter'){
+    const r=await fetch('https://openrouter.ai/api/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${keys.openrouter}`,'HTTP-Referer':'https://ai-pipeline.local','X-Title':'AI Pipeline'},body:JSON.stringify({model,messages:[{role:'user',content:prompt}],max_tokens:1500})});
+    if(!r.ok){const e=await r.json();throw new Error(e.error?.message||'OpenRouter 錯誤');}
+    return (await r.json()).choices?.[0]?.message?.content||'';
+  }
+  if(platform==='ollama'){
+    const base=keys.ollama||'http://localhost:11434';
+    const r=await fetch(`${base}/api/generate`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model,prompt,stream:false})});
+    if(!r.ok)throw new Error('Ollama 連接失敗，請確認 Ollama 正在執行');
+    return (await r.json()).response||'';
+  }
+  throw new Error('沒有可用的平台，請先設定 API Key');
+}
+
+// ── QUICK RUN ──
+async function runQuick(){
+  const input=document.getElementById('quickInput').value.trim();
+  if(!input){alert('請先輸入你的內容！');return;}
+  const steps=SCENARIOS[currentScenario];
+  const btn=document.getElementById('btnGo');
+  btn.disabled=true;btn.textContent='⏳ 執行中...';
+
+  const ps=document.getElementById('progSection');
+  ps.style.display='block';
+
+  // Build progress bubbles
+  const row=document.getElementById('progStepsRow');
+  row.innerHTML='<div style="display:flex;align-items:flex-start;gap:0">'
+    +steps.map((s,i)=>`
+      <div class="prog-item">
+        <div style="display:flex;align-items:center">
+          <div class="prog-bubble" id="pb-${i}">${i+1}</div>
+          ${i<steps.length-1?`<div class="prog-line" id="pl-${i}"></div>`:''}
+        </div>
+        <div class="prog-label">${s.role}</div>
+      </div>`).join('')
+  +'</div>';
+
+  const outC=document.getElementById('quickOutput');
+  outC.innerHTML='';
+  let current=input;
+
+  for(let i=0;i<steps.length;i++){
+    const s=steps[i];
+    document.getElementById(`pb-${i}`).className='prog-bubble active';
+    const prompt=s.prompt.replace('{input}',current);
+    const oid=`qo-${i}`;
+    const platName=PLATFORMS[s.platform]?.name||s.platform;
+    outC.innerHTML+=`<div class="out-step">
+      <div class="out-head">
+        <div class="out-num">${i+1}</div>
+        <span class="out-role">${s.role}</span>
+        <span class="out-plat">${platName}</span>
+        <div class="badge running" id="qbadge-${i}">執行中...</div>
+        <button class="copy-btn" id="qcopy-${i}" onclick="copyEl('${oid}')" style="display:none">複製</button>
+      </div>
+      <div class="out-box" id="${oid}">等待回應...</div>
+    </div>`;
+    outC.scrollTop=outC.scrollHeight;
+    try{
+      const result=await callAPI(s.platform,PLATFORMS[s.platform].models[0],prompt);
+      document.getElementById(oid).textContent=result;
+      document.getElementById(`qbadge-${i}`).textContent='完成 ✓';
+      document.getElementById(`qbadge-${i}`).className='badge done';
+      document.getElementById(`qcopy-${i}`).style.display='inline-block';
+      document.getElementById(`pb-${i}`).className='prog-bubble done';
+      if(i<steps.length-1)document.getElementById(`pl-${i}`).className='prog-line done';
+      current=result;
+    }catch(e){
+      document.getElementById(oid).textContent='錯誤：'+e.message+'\n\n💡 請到「進階設定」設定 API Key';
+      document.getElementById(`qbadge-${i}`).textContent='失敗';
+      document.getElementById(`qbadge-${i}`).className='badge error';
+      document.getElementById(`pb-${i}`).className='prog-bubble error';
+      break;
+    }
+  }
+  btn.disabled=false;btn.textContent='▶ 再次執行';
+}
+
+// ── ADVANCED ──
+function addAdvStep(roleName,platform){
+  const id=++advStepId;
+  const role=ROLES.find(r=>r.name===roleName)||ROLES[0];
+  advSteps.push({id,roleName:role.name,prompt:role.prompt,platform:platform||'groq'});
+  renderAdvSteps();
+}
+function removeAdvStep(id){advSteps=advSteps.filter(s=>s.id!==id);renderAdvSteps();}
+function onAdvRoleChange(id,rn){
+  const s=advSteps.find(s=>s.id===id),r=ROLES.find(r=>r.name===rn);
+  if(s&&r){s.roleName=r.name;s.prompt=r.prompt;}renderAdvSteps();
+}
+function onAdvPlatChange(id,p){const s=advSteps.find(s=>s.id===id);if(s)s.platform=p;renderAdvSteps();}
+function renderAdvSteps(){
+  const c=document.getElementById('advStepsContainer');
+  if(!advSteps.length){c.innerHTML='<div class="empty-hint">點下方加入步驟</div>';return;}
+  c.innerHTML=advSteps.map((s,i)=>{
+    const plat=PLATFORMS[s.platform]||PLATFORMS.groq;
+    return`<div class="step-card">
+      <div class="step-head"><div class="step-num">${i+1}</div><div class="step-lbl">步驟 ${i+1}</div><button class="del-btn" onclick="removeAdvStep(${s.id})">×</button></div>
+      <div class="field-row">
+        <div><div class="field-lbl">角色</div><select onchange="onAdvRoleChange(${s.id},this.value)">${ROLES.map(r=>`<option value="${r.name}"${r.name===s.roleName?' selected':''}>${r.name}</option>`).join('')}</select></div>
+        <div><div class="field-lbl">平台</div><select id="aplat-${s.id}" onchange="onAdvPlatChange(${s.id},this.value)">${Object.entries(PLATFORMS).map(([k,v])=>`<option value="${k}"${k===s.platform?' selected':''}>${v.name}</option>`).join('')}</select></div>
+      </div>
+      <div class="field-row">
+        <div><div class="field-lbl">模型</div><select id="amodel-${s.id}">${plat.models.map(m=>`<option value="${m}">${m}</option>`).join('')}</select></div><div></div>
+      </div>
+      <div class="field-lbl" style="margin-bottom:3px">指令（{input} = 上一步結果）</div>
+      <textarea id="aprompt-${s.id}" rows="2" style="font-size:14px">${s.prompt}</textarea>
+    </div>`;
+  }).join('');
+}
+async function runAdvanced(){
+  const input=document.getElementById('advInput').value.trim();
+  if(!input){alert('請先輸入需求！');return;}
+  if(!advSteps.length){alert('請先加入步驟！');return;}
+  const btn=document.getElementById('advRunBtn');
+  btn.disabled=true;btn.textContent='⏳ 執行中...';
+  const pw=document.getElementById('advProgressWrap'),pb=document.getElementById('advProgressBar');
+  pw.style.display='block';pb.style.width='0%';
+  const outC=document.getElementById('advOutputContainer');
+  outC.innerHTML='';
+  let current=input;
+  for(let i=0;i<advSteps.length;i++){
+    const s=advSteps[i];
+    const model=document.getElementById(`amodel-${s.id}`).value;
+    const prompt=document.getElementById(`aprompt-${s.id}`).value.replace('{input}',current);
+    const platName=PLATFORMS[s.platform]?.name||s.platform;
+    const oid=`ao-${s.id}-${i}`;
+    outC.innerHTML+=`<div class="out-step">
+      <div class="out-head">
+        <div class="out-num">${i+1}</div><span class="out-role">${s.roleName}</span>
+        <span class="out-plat">${platName}</span><span style="font-size:13px;color:#333">${model}</span>
+        <div class="badge running" id="abadge-${oid}">執行中...</div>
+        <button class="copy-btn" id="acopy-${oid}" onclick="copyEl('${oid}')" style="display:none">複製</button>
+      </div>
+      <div class="adv-out-box" id="${oid}">等待回應...</div>
+    </div>`;
+    pb.style.width=`${Math.round((i/advSteps.length)*100)}%`;
+    outC.scrollTop=outC.scrollHeight;
+    try{
+      const result=await callAPI(s.platform,model,prompt);
+      document.getElementById(oid).textContent=result;
+      document.getElementById(`abadge-${oid}`).textContent='完成 ✓';
+      document.getElementById(`abadge-${oid}`).className='badge done';
+      document.getElementById(`acopy-${oid}`).style.display='inline-block';
+      current=result;
+    }catch(e){
+      document.getElementById(oid).textContent='錯誤：'+e.message;
+      document.getElementById(`abadge-${oid}`).textContent='失敗';
+      document.getElementById(`abadge-${oid}`).className='badge error';
+      break;
+    }
+  }
+  pb.style.width='100%';
+  setTimeout(()=>{pw.style.display='none';},800);
+  btn.disabled=false;btn.textContent='▶ 執行串聯';
+}
+prefillKeys();
+function copyEl(id){
+  navigator.clipboard.writeText(document.getElementById(id).textContent).then(()=>{
+    const els=document.querySelectorAll(`[onclick*="${id}"]`);
+    els.forEach(b=>{const t=b.textContent;b.textContent='已複製！';setTimeout(()=>{b.textContent=t;},1500);});
+  });
+}
+</script>
+</body>
+</html>
